@@ -541,6 +541,9 @@ struct cs8409_apple_spec {
 	int play_init;
 	int capture_init;
 
+        int play_init_count;
+        int capture_init_count;
+
 	// new item to limit times we redo unmute/play
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	struct timespec64 last_play_time;
@@ -663,6 +666,37 @@ static void debug_show_configs(struct hda_codec *codec,
 //#include "patch_cirrus_explicit.h"
 
 
+// as of kernel 6.8 we need prototype definitions for non-static functions
+// (in addition to actual definitions)
+
+
+// definitions for patch_cirrus_apple.h
+
+void cs_8409_dump_callback(struct hda_codec *codec);
+
+struct hda_jack_callback *
+cs_8409_hda_jack_detect_enable_callback(struct hda_codec *codec, hda_nid_t nid, int dev_id, int tag,
+				    hda_jack_callback_fn func);
+
+int cs_8409_apple_build_pcms(struct hda_codec *codec);
+
+void cs_8409_cs42l83_mark_jack(struct hda_codec *codec);
+
+int cs_8409_apple_build_pcms(struct hda_codec *codec);
+
+void cs_8409_cs42l83_mark_jack(struct hda_codec *codec);
+
+void cs_8409_cs42l83_jack_report_sync(struct hda_codec *codec);
+
+void cs_8409_cs42l83_jack_report_hp_update(struct hda_codec *codec, int plugin);
+
+void cs_8409_cs42l83_jack_unsol_event(struct hda_codec *codec, unsigned int res);
+
+void cs_8409_apple_free(struct hda_codec *codec);
+
+
+
+
 static void cs_8409_pcm_playback_pre_prepare_hook(struct hda_pcm_stream *hinfo, struct hda_codec *codec, 
                                unsigned int stream_tag, unsigned int format, struct snd_pcm_substream *substream,
                                int action);
@@ -701,9 +735,9 @@ static int cs_8409_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 {
         struct hda_gen_spec *spec = codec->spec;
         int err;
-        mycodec_dbg(codec, "cs_8409_playback_pcm_prepare\n");
+        mycodec_info(codec, "cs_8409_playback_pcm_prepare\n");
 
-        mycodec_dbg(codec, "cs_8409_playback_pcm_prepare: NID=0x%x, stream=0x%x, format=0x%x\n",
+        mycodec_info(codec, "cs_8409_playback_pcm_prepare: NID=0x%x, stream=0x%x, format=0x%x\n",
                   hinfo->nid, stream_tag, format);
 
         cs_8409_pcm_playback_pre_prepare_hook(hinfo, codec, stream_tag, format, substream,
@@ -727,6 +761,7 @@ static int cs_8409_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
         if (!err)
                 if (spec->pcm_playback_hook)
                         spec->pcm_playback_hook(hinfo, codec, substream, HDA_GEN_PCM_ACT_PREPARE);
+        mycodec_info(codec, "cs_8409_playback_pcm_prepare end\n");
         return err;
 }
 
@@ -747,9 +782,9 @@ static int cs_8409_capture_pcm_prepare(struct hda_pcm_stream *hinfo,
 {
         struct cs8409_apple_spec *spec = codec->spec;
 
-        mycodec_dbg(codec, "cs_8409_capture_pcm_prepare\n");
+        mycodec_info(codec, "cs_8409_capture_pcm_prepare\n");
 
-        mycodec_dbg(codec, "cs_8409_capture_pcm_prepare: NID=0x%x, stream=0x%x, format=0x%x\n",
+        mycodec_info(codec, "cs_8409_capture_pcm_prepare: NID=0x%x, stream=0x%x, format=0x%x\n",
                   hinfo->nid, stream_tag, format);
 
 
@@ -802,6 +837,8 @@ static int cs_8409_capture_pcm_prepare(struct hda_pcm_stream *hinfo,
 	// note this hook if defined also needs to switch between the 2 versions of input!!
         if (spec->gen.pcm_capture_hook)
                 spec->gen.pcm_capture_hook(hinfo, codec, substream, HDA_GEN_PCM_ACT_PREPARE);
+
+        mycodec_info(codec, "cs_8409_capture_pcm_prepare end\n");
 
         return 0;
 }
@@ -1168,7 +1205,8 @@ static void cs_8409_dump_paths(struct hda_codec *codec, const char *label_string
 static int cs_8409_apple_boot_init(struct hda_codec *codec)
 {
 	struct hda_pcm *info = NULL;
-	struct hda_pcm_stream *hinfo = NULL;
+	// originally made non-const for fixup attempts in old kernels - pre 5.13
+	const struct hda_pcm_stream *hinfo = NULL;
 	struct cs8409_apple_spec *spec = NULL;
 	//struct snd_kcontrol *kctl = NULL;
 	int pcmcnt = 0;
@@ -3064,6 +3102,9 @@ static int patch_cs8409_apple(struct hda_codec *codec)
 
        spec->play_init = 0;
        spec->capture_init = 0;
+
+       spec->play_init_count = 0;
+       spec->capture_init_count = 0;
 
        // init the last play time
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)

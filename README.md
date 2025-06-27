@@ -47,7 +47,7 @@ To create a more Apple-like sound requires creating eg an Alsa pseudo device to 
 and apply different digital filters to the tweeter and woofer channels.
 
 
-NOTE. My primary testing kernel is now Ubuntu LTS 22.04 5.15.
+NOTE. My primary testing kernel is now Ubuntu LTS 24.04 6.8.
 
 
 
@@ -60,19 +60,19 @@ Compiling and installing driver:
 
 **fedora package install**
 ```
-dnf install wget make gcc kernel-devel
+dnf install gcc kernel-devel make patch wget
 ```
 **ubuntu package install**  
 ```
-apt install wget make gcc linux-headers-generic
+apt install gcc linux-headers-generic make patch wget
 ```
 **arch package install**
 ```
-pacman -S wget make gcc linux-headers
+pacman -S gcc linux-headers make patch wget
 ```
 **void package install**
 ```
-xbps-install -S wget make gcc linux-headers
+xbps-install -S gcc make linux-headers patch wget
 ```
 
 **build driver**  
